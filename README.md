@@ -12,4 +12,6 @@ Follow these steps to deploy the bot to [Fly.io](https://fly.io).
                   ADMIN_CHAT_ID=<telegram-id> \
                   OPENAI_MODEL=gpt-4.1
    ```
+   `OPENAI_MODEL` selects the model used in both `gpt.py` and `scheduler.py`. If
+   not set, they default to `gpt-4.1`.
 4. **Push to the `main` branch**. A GitHub Actions workflow automatically deploys the app whenever you push to `main`.
