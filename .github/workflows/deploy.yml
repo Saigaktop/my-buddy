@@ -17,3 +17,4 @@ jobs:
           BOT_TOKEN:     ${{ secrets.BOT_TOKEN }}
           OPENAI_API_KEY:${{ secrets.OPENAI_API_KEY }}
           ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
