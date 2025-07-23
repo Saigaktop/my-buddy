@@ -1,6 +1,5 @@
 import aiosqlite
 import datetime as dt
-import asyncio
 
 DB = "buddy.db"
 
@@ -24,6 +23,11 @@ async def init() -> None:
             """
         )
         await db.commit()
+
+
+async def init_db() -> None:
+    """Initialize the database tables."""
+    await init()
 
 
 async def update_last_seen(user_id: int, seen: dt.datetime | None = None) -> None:
@@ -92,4 +96,3 @@ async def add_reminder(
         await db.commit()
 
 
-asyncio.run(init())
