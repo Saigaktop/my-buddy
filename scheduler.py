@@ -1,10 +1,12 @@
 from __future__ import annotations
 import datetime as dt, os, aiosqlite
+import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from prompts import SYSTEM_PROMPT
 from openai import AsyncOpenAI          # ⬅ новый импорт
 from telegram.ext import Application          # ← импортируем класс
 from telegram.ext import ContextTypes         # ← он вам пригодится дальше
+from db import update_last_seen, get_all_users
 
 client = AsyncOpenAI(                  # ⬅ создаём клиента
     api_key=os.getenv("OPENAI_API_KEY")
@@ -22,6 +24,16 @@ async def gpt_short(message: str) -> str:
         ],
     )
     return chat.choices[0].message.content
+
+
+async def fetch_trending_fact() -> str:
+    """Retrieve a short fact from a public API."""
+    url = "https://uselessfacts.jsph.pl/api/v2/facts/random"
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("text", "")
 
 async def tick(app: Application):
     now_utc = dt.datetime.utcnow()
@@ -51,7 +63,21 @@ async def tick(app: Application):
                     )
         await db.commit()
 
-
+    # check silent users
+    users = await get_all_users()
+    for uid, seen, hours in users:
+        if now_utc - seen >= dt.timedelta(hours=hours):
+            fact = await fetch_trending_fact()
+            try:
+                short = await gpt_short(f"Кратко перескажи новость: {fact}")
+                fact_msg = short.strip()
+            except Exception:
+                fact_msg = fact
+            msg = (
+                "Давно не слышались! Вот что интересного: " + fact_msg
+            )
+            await app.bot.send_message(uid, msg)
+            await update_last_seen(uid, now_utc)
 
 
 def start_scheduler(app):
