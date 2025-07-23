@@ -15,10 +15,19 @@ from functools import partial
 
 from aiohttp import web
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+
+from scheduler import start_scheduler
+import db
 
 
 # ---------------------------------------------------------------------------
@@ -43,6 +52,11 @@ logger = logging.getLogger("buddy-bot")
 # ---------------------------------------------------------------------------
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("🤖 Бот запущен и готов к работе!")
+
+
+async def log_last_seen(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.effective_user:
+        await db.touch_user(update.effective_user.id)
 
 
 async def health(_: web.Request) -> web.Response:
@@ -75,6 +89,9 @@ async def post_init(app: Application) -> None:
     sch.start()
     logger.info("APScheduler запущен")
 
+    # 3) вспомогательные джобы (напоминания и пинги)
+    start_scheduler(app)
+
 
 # ---------------------------------------------------------------------------
 # bootstrap
@@ -88,6 +105,7 @@ def main() -> None:
     )
 
     application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(MessageHandler(filters.ALL, log_last_seen))
 
     logger.info("Запускаю run_webhook()")
     application.run_webhook(

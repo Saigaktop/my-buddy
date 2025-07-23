@@ -6,6 +6,7 @@ from openai import AsyncOpenAI          # ⬅ новый импорт
 from telegram.ext import Application          # ← импортируем класс
 from telegram.ext import ContextTypes         # ← он вам пригодится дальше
 
+
 client = AsyncOpenAI(                  # ⬅ создаём клиента
     api_key=os.getenv("OPENAI_API_KEY")
 )
@@ -49,9 +50,35 @@ async def tick(app: Application):
         await db.commit()
 
 
+async def check_silence(app: Application):
+    """Ping silent users with a friendly message."""
+    now_utc = dt.datetime.utcnow()
+
+    async with aiosqlite.connect("buddy.db") as db:
+        async with db.execute(
+            "SELECT user_id,last_seen,silence_hours FROM users"
+        ) as cur:
+            users = await cur.fetchall()
+
+        for uid, last_iso, silence in users:
+            if not last_iso:
+                continue
+            last_seen = dt.datetime.fromisoformat(last_iso)
+            if now_utc - last_seen >= dt.timedelta(hours=silence):
+                fact = await gpt_short("Расскажи короткий интересный факт дня.")
+                text = f"Как проходит твой день? Вот интересный факт: {fact}"
+                await app.bot.send_message(uid, text)
+                await db.execute(
+                    "UPDATE users SET last_seen=? WHERE user_id=?",
+                    (now_utc.isoformat(), uid),
+                )
+        await db.commit()
+
+
 
 
 def start_scheduler(app):
     sched = AsyncIOScheduler()
-    sched.add_job(tick,'interval',minutes=1,args=[app])
+    sched.add_job(tick, 'interval', minutes=1, args=[app])
+    sched.add_job(check_silence, 'interval', minutes=60, args=[app])
     sched.start()
