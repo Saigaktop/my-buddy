@@ -15,7 +15,15 @@ from functools import partial
 
 from aiohttp import web
 from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
+from gpt import ask_gpt
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -55,6 +63,14 @@ async def tick(bot, *_):
         logger.info("Tick sent")
 
 
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Forward user messages to GPT and reply with the result."""
+    if not update.message:
+        return
+    reply = await ask_gpt(update.message.text)
+    await update.message.reply_text(reply)
+
+
 # ---------------------------------------------------------------------------
 # post_init ­– выполняется сразу после инициализации Application
 # ---------------------------------------------------------------------------
@@ -88,6 +104,7 @@ def main() -> None:
     )
 
     application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Запускаю run_webhook()")
     application.run_webhook(
