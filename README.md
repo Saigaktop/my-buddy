@@ -9,6 +9,7 @@ Follow these steps to deploy the bot to [Fly.io](https://fly.io).
    fly secrets set FLY_API_TOKEN=<your-token> \
                   BOT_TOKEN=<telegram-bot-token> \
                   OPENAI_API_KEY=<openai-key> \
-                  ADMIN_CHAT_ID=<telegram-id>
+                  ADMIN_CHAT_ID=<telegram-id> \
+                  OPENAI_MODEL=gpt-4.1
    ```
 4. **Push to the `main` branch**. A GitHub Actions workflow automatically deploys the app whenever you push to `main`.
