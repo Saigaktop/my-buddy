@@ -10,9 +10,12 @@ client = AsyncOpenAI(                  # ⬅ создаём клиента
     api_key=os.getenv("OPENAI_API_KEY")
 )
 
+# модель OpenAI можно задать через переменную среды
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
+
 async def gpt_short(message: str) -> str:
     chat = await client.chat.completions.create(
-        model="gpt-4o-mini",           # можно заменить на любую доступную модель
+        model=OPENAI_MODEL,           # можно заменить на любую доступную модель
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user",   "content": message},
