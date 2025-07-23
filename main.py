@@ -24,6 +24,9 @@ from telegram.ext import (
 )
 
 from gpt import ask_gpt
+from scheduler import start_scheduler
+from db import touch_user, add_reminder
+import datetime as dt
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -50,6 +53,7 @@ logger = logging.getLogger("buddy-bot")
 # Handlers
 # ---------------------------------------------------------------------------
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await touch_user(update.effective_user.id)
     await update.message.reply_text("🤖 Бот запущен и готов к работе!")
 
 
@@ -63,10 +67,29 @@ async def tick(bot, *_):
         logger.info("Tick sent")
 
 
+async def cmd_remind(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Set a reminder: /remind <minutes> <text>."""
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("Usage: /remind <minutes> <text>")
+        return
+    try:
+        minutes = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("First argument must be an integer number of minutes.")
+        return
+
+    text = " ".join(context.args[1:])
+    due = dt.datetime.utcnow() + dt.timedelta(minutes=minutes)
+    await add_reminder(update.effective_user.id, text, due)
+    await touch_user(update.effective_user.id)
+    await update.message.reply_text(f"Напоминание через {minutes} мин: {text}")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Forward user messages to GPT and reply with the result."""
     if not update.message:
         return
+    await touch_user(update.effective_user.id)
     reply = await ask_gpt(update.message.text)
     await update.message.reply_text(reply)
 
@@ -91,6 +114,9 @@ async def post_init(app: Application) -> None:
     sch.start()
     logger.info("APScheduler запущен")
 
+    # старт напоминаний
+    start_scheduler(app)
+
 
 # ---------------------------------------------------------------------------
 # bootstrap
@@ -104,6 +130,7 @@ def main() -> None:
     )
 
     application.add_handler(CommandHandler("start", cmd_start))
+    application.add_handler(CommandHandler("remind", cmd_remind))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Запускаю run_webhook()")
