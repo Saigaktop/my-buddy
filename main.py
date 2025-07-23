@@ -26,6 +26,7 @@ from telegram.ext import (
 from gpt import ask_gpt
 from scheduler import start_scheduler
 from db import touch_user, add_reminder
+import db
 import datetime as dt
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -98,6 +99,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # post_init ­– выполняется сразу после инициализации Application
 # ---------------------------------------------------------------------------
 async def post_init(app: Application) -> None:
+    await db.init_db()
     # 1) health‑роут
     app.web_app.router.add_get("/healthz", health)
     logger.info("Health route / зарегистрирован")
