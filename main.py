@@ -60,7 +60,7 @@ async def tick(bot, *_):
 # ---------------------------------------------------------------------------
 async def post_init(app: Application) -> None:
     # 1) health‑роут
-    app.web_app.router.add_get("/", health)
+    app.web_app.router.add_get("/healthz", health)
     logger.info("Health route / зарегистрирован")
 
     # 2) запуск APScheduler
